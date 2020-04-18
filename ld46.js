@@ -6,9 +6,11 @@
 
 const DEBUGMODE = true;
 const CAMSPD = 4;
+const worldW = 8000;
+const worldH = 4500;
 
 var screenCanvas, screenCTX, screenW, screenH, spritesheet;
-var worldCanvas, world, worldW, worldH;
+var worldCanvas, worldCTX; 
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
@@ -37,8 +39,9 @@ function init() {
     resize();
 
     worldCanvas = document.createElement("canvas");
-    world = worldCanvas.getContext('2d');
-    resize();
+    worldCanvas.width = worldW;
+    worldCanvas.height = worldH;
+    worldCTX = worldCanvas.getContext('2d');
 
     music = document.createElement("audio");
     music.autoplay = false;
@@ -56,9 +59,9 @@ function init() {
 }
 
 function resize() {
-    if (DEBUGMODE) console.log("resize");
     screenW = screenCanvas.width = window.innerWidth;
     screenH = screenCanvas.height = window.innerHeight;
+    if (DEBUGMODE) console.log("resize "+screenW+"x"+screenH);
 }
 
 function addThing(name,x,y) {
@@ -69,6 +72,14 @@ function addThing(name,x,y) {
     return ent;
 }
 
+function addFolk(name,x,y) {
+    if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
+    var ent = { name:name, x:x, y:y };
+    folks[numfolks] = ent;
+    numfolks++;
+    return ent;
+}
+
 function onclick(e) {
     if (DEBUGMODE) console.log("click " + e.clientX+","+e.clientY);
     
@@ -76,7 +87,9 @@ function onclick(e) {
     mouseX = e.clientX - camX;
     mouseY = e.clientY - camY;
 
-    addThing("flower", mouseX, mouseY);
+    //addThing("flower", mouseX, mouseY);
+    addFolk("Joe Schmoe", mouseX, mouseY);
+    renderWorld(); // redraw the giant world and all things[]
 
     if (!userHasInteracted) {
         if (DEBUGMODE) console.log("playing music");
@@ -95,7 +108,7 @@ function onkeydown(e) {
     if(e.keyCode == 38 || e.keyCode == 90 || e.keyCode == 87) { up = true; }
     if(e.keyCode == 39 || e.keyCode == 68) { right = true; }
     if(e.keyCode == 40 || e.keyCode == 83) { down = true; }
-    if(e.keyCode == 37 || e.keyCode == 65 ||e.keyCode == 81) { left = true; }
+    if(e.keyCode == 37 || e.keyCode == 65 || e.keyCode == 81) { left = true; }
 }
   
 function onkeyup(e) {
@@ -113,20 +126,40 @@ function step() {
     if (down) { camY += CAMSPD; }
     if (left) { camX -= CAMSPD; }
     if (right) { camX += CAMSPD; }
+    // stay in bounds
+    if (camX<0) camX=0;
+    if (camY<0) camY=0;
+    if (camX>worldW-screenW) camX=worldW-screenW;
+    if (camY>worldH-screenH) camY=worldH-screenH;
 
 }
 
-function render() {
+function renderScreen() {
     screenCTX.clearRect(0,0,screenW,screenH);
+    
+    // the static world terrain bg
+    screenCTX.drawImage(worldCanvas,camX,camY,screenW,screenH,0,0,screenW,screenH);
+    
+    // all dynamic objects
+    for (i=0; i<numfolks; i++) {
+        screenCTX.drawImage(spritesheet,folks[i].x-camX,folks[i].y-camY);
+    }
+
+    // test
     screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3-camX,screenH/2-camY);
 
+}
+
+function renderWorld() {
+    if (DEBUGMODE) console.log("renderWorld with "+numthings+" things");
+    worldCTX.clearRect(0,0,worldW,worldH);
     for (i=0; i<numthings; i++) {
-        screenCTX.drawImage(spritesheet,things[i].x-camX,things[i].y-camY);
+        worldCTX.drawImage(spritesheet,things[i].x,things[i].y);
     }
 }
 
 function animate() {
     step();
-    render();
+    renderScreen();
     requestAnimationFrame(animate);
 }
