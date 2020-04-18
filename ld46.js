@@ -65,6 +65,7 @@ function init() {
     window.addEventListener("keydown", onkeydown);
     window.addEventListener("keyup", onkeyup);
     window.addEventListener("wheel", onwheel);
+    window.addEventListener("resize", resize);
 }
 
 function step() {
