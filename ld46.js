@@ -2,13 +2,17 @@
 // a game made from scratch in 48hrs
 // no libs, no engines, no assets, no old code
 
+"use strict";
+
 const DEBUGMODE = true;
 
-var screenCanvas, screen, screenW, screenH;
+var screenCanvas, screenCTX, screenW, screenH, spritesheet;
 var worldCanvas, world, worldW, worldH;
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom;
-var userHasInteracted, up, right, down, left, mousex, mousey;
+var userHasInteracted, up, right, down, left, mouseX, mouseY;
+var things, numthings, folks, numfolks;
+var x, y, i, num;
 
 window.addEventListener("load", init);
 
@@ -18,19 +22,22 @@ function init() {
     frame = 0;
     camX = 0;
     camY = 0;
+    mouseX = 0;
+    mouseY = 0;
     zoom = 1;
-    mousex = 0;
-    mousey = 0;
+    things = [];
+    numthings = 0;
+    folks = [];
+    numfolks = 0;
 
     screenCanvas = document.createElement("canvas");
     document.body.appendChild(screenCanvas);
-    screen = screenCanvas.getContext('2d');
+    screenCTX = screenCanvas.getContext('2d');
     resize();
 
     worldCanvas = document.createElement("canvas");
     world = worldCanvas.getContext('2d');
     resize();
-
 
     music = document.createElement("audio");
     music.autoplay = false;
@@ -53,15 +60,29 @@ function resize() {
     screenH = screenCanvas.height = window.innerHeight;
 }
 
+function addThing(name,x,y) {
+    if (DEBUGMODE) console.log("addThing " + name+","+x+","+y);
+    var ent = { name:name, x:x, y:y };
+    things[numthings] = ent;
+    numthings++;
+    return ent;
+}
+
 function onclick(e) {
     if (DEBUGMODE) console.log("click " + e.clientX+","+e.clientY);
-    mouseX = e.clientX;
-    mouseY = e.clientY;
+    
+    // in world coordinates
+    mouseX = e.clientX - camX;
+    mouseY = e.clientY - camY;
+
+    addThing("flower", mouseX, mouseY);
+
     if (!userHasInteracted) {
         if (DEBUGMODE) console.log("playing music");
         userHasInteracted = true;
         music.play();
     }
+
 }
 
 function onwheel(e) {
@@ -88,8 +109,12 @@ function step() {
 }
 
 function render() {
-    screen.clearRect(0,0,screenW,screenH);
-    screen.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3,screenH/2);
+    screenCTX.clearRect(0,0,screenW,screenH);
+    screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3,screenH/2);
+
+    for (i=0; i<numthings; i++) {
+        screenCTX.drawImage(spritesheet,things[i].x-camX,things[i].y-camY);
+    }
 }
 
 function animate() {
