@@ -5,6 +5,7 @@
 "use strict";
 
 const DEBUGMODE = true;
+const CAMSPD = 4;
 
 var screenCanvas, screenCTX, screenW, screenH, spritesheet;
 var worldCanvas, world, worldW, worldH;
@@ -106,11 +107,18 @@ function onkeyup(e) {
 
 function step() {
     frame++;
+
+    // scroll camera
+    if (up) { camY -= CAMSPD; }
+    if (down) { camY += CAMSPD; }
+    if (left) { camX -= CAMSPD; }
+    if (right) { camX += CAMSPD; }
+
 }
 
 function render() {
     screenCTX.clearRect(0,0,screenW,screenH);
-    screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3,screenH/2);
+    screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3-camX,screenH/2-camY);
 
     for (i=0; i<numthings; i++) {
         screenCTX.drawImage(spritesheet,things[i].x-camX,things[i].y-camY);
