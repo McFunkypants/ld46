@@ -1,0 +1,36 @@
+{
+    "env": {
+        "browser": true,
+        "es6": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": 2016
+    },
+    "rules": {
+        "indent": [
+            "off",
+            "tab"
+        ],
+        "quotes": [
+            "off",
+            "double"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-unused-vars": [
+            "error", 
+            { "vars": "local", 
+                "args": "after-used", 
+                "ignoreRestSiblings": false 
+            }
+        ],
+        "no-undef":"off",
+        "no-console":"off",
+        "no-warning-comments": ["warn", 
+            {   "terms": ["todo", "fixme"], 
+                "location": "anywhere" }]
+    }
+}
