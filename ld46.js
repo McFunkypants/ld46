@@ -6,13 +6,16 @@
 
 const DEBUGMODE = true;
 const CAMSPD = 4;
+const MAXZOOM = 10;
+const MINZOOM = 1;
+const ZOOMSPD = 0.1;
 const worldW = 8000;
 const worldH = 4500;
 
 var screenCanvas, screenCTX, screenW, screenH, spritesheet;
 var worldCanvas, worldCTX; 
 var music, sfx, mute, volume;
-var frame, camX, camY, zoom;
+var frame, camX, camY, zoom, zoomSmooth;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
 var things, numthings, folks, numfolks;
 var x, y, i, num;
@@ -28,6 +31,7 @@ function init() {
     mouseX = 0;
     mouseY = 0;
     zoom = 1;
+    zoomSmooth = 1;
     things = [];
     numthings = 0;
     folks = [];
@@ -56,6 +60,11 @@ function init() {
     window.addEventListener("keyup", onkeyup);
     window.addEventListener("wheel", onwheel);
     window.addEventListener("resize", resize);
+
+    // load level
+    for (i=0; i<1000; i++) {
+        addThing("prop",Math.random()*worldW,Math.random()*worldH);
+    }
 }
 
 function resize() {
@@ -84,11 +93,11 @@ function onclick(e) {
     if (DEBUGMODE) console.log("click " + e.clientX+","+e.clientY);
     
     // in world coordinates
-    mouseX = e.clientX - camX;
-    mouseY = e.clientY - camY;
+    mouseX = (e.clientX - camX) * zoom;
+    mouseY = (e.clientY - camY) * zoom;
 
-    //addThing("flower", mouseX, mouseY);
-    addFolk("Joe Schmoe", mouseX, mouseY);
+    addThing("flower", mouseX, mouseY);
+    //addFolk("Joe Schmoe", mouseX, mouseY);
     renderWorld(); // redraw the giant world and all things[]
 
     if (!userHasInteracted) {
@@ -100,7 +109,14 @@ function onclick(e) {
 }
 
 function onwheel(e) {
-    if (DEBUGMODE) console.log("wheel " + e.deltaY);
+    if (e.deltaY>0) {
+        zoom++;
+        if (zoom>MAXZOOM) zoom = MAXZOOM;
+    } else {
+        zoom--;
+        if (zoom<MINZOOM) zoom = MINZOOM;
+    }
+    if (DEBUGMODE) console.log("wheel ("+e.deltaY+") zoom="+zoom);
 }
 
 function onkeydown(e) {
@@ -132,13 +148,20 @@ function step() {
     if (camX>worldW-screenW) camX=worldW-screenW;
     if (camY>worldH-screenH) camY=worldH-screenH;
 
+    // lerp zoom
+    if (zoom>zoomSmooth) zoomSmooth += ZOOMSPD;
+    if (zoom<zoomSmooth) zoomSmooth -= ZOOMSPD;
+    // close enough to snap
+    if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
+
 }
 
 function renderScreen() {
     screenCTX.clearRect(0,0,screenW,screenH);
     
     // the static world terrain bg
-    screenCTX.drawImage(worldCanvas,camX,camY,screenW,screenH,0,0,screenW,screenH);
+    // unzoomed: works // screenCTX.drawImage(worldCanvas,camX,camY,screenW,screenH,0,0,screenW,screenH);
+    screenCTX.drawImage(worldCanvas,camX,camY,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
     
     // all dynamic objects
     for (i=0; i<numfolks; i++) {
