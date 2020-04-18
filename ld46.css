@@ -1,6 +1,24 @@
-* { 
+body { 
     margin:0;
     padding:0;
-    background:#000;
     overflow:hidden; 
 }
+
+div, a {
+    font-family: 'Baloo Bhaina 2', sans;
+    color:#371f17;
+    background:#e9ddcb;
+    font-size:24px;
+    outline:none;
+    margin:32px;
+    padding-left:32px;
+    padding-right:32px;
+    padding-top:16px;
+    padding-bottom:8px;
+    text-align:center;
+    border:8px solid #371f17;
+    border-radius:8px;
+    display:block;
+    position:absolute;
+}
+
