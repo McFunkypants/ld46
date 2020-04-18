@@ -12,13 +12,13 @@ const ZOOMSPD = 0.1;
 const worldW = 8000;
 const worldH = 4500;
 
-var screenCanvas, screenCTX, screenW, screenH, spritesheet;
+var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
 var worldCanvas, worldCTX; 
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
 var things, numthings, folks, numfolks;
-var x, y, i, num;
+var x, y, i, num, debugDiv;
 
 window.addEventListener("load", init);
 
@@ -36,6 +36,13 @@ function init() {
     numthings = 0;
     folks = [];
     numfolks = 0;
+
+    if (DEBUGMODE) {
+        debugDiv = document.createElement("div");
+        document.body.appendChild(debugDiv);
+        debugDiv.style.bottom = "32px";
+        debugDiv.style.right = "32px";
+    }
 
     screenCanvas = document.createElement("canvas");
     document.body.appendChild(screenCanvas);
@@ -55,26 +62,26 @@ function init() {
     spritesheet.src = 'ld46.png'; 
     spritesheet.onload = animate;
 
-    window.addEventListener("mousedown", onclick);
+    window.addEventListener("mousedown", onmousedown);
+    window.addEventListener("mousemove", onmousemove);
+    window.addEventListener("mouseup", onmouseup);
     window.addEventListener("keydown", onkeydown);
     window.addEventListener("keyup", onkeyup);
     window.addEventListener("wheel", onwheel);
     window.addEventListener("resize", resize);
 
-    // load level
-    for (i=0; i<1000; i++) {
-        addThing("prop",Math.random()*worldW,Math.random()*worldH);
-    }
 }
 
 function resize() {
     screenW = screenCanvas.width = window.innerWidth;
     screenH = screenCanvas.height = window.innerHeight;
+    screenW2 = Math.abs(screenW/2);
+    screenH2 = Math.abs(screenH/2);
     if (DEBUGMODE) console.log("resize "+screenW+"x"+screenH);
 }
 
 function addThing(name,x,y) {
-    if (DEBUGMODE) console.log("addThing " + name+","+x+","+y);
+    //if (DEBUGMODE) console.log("addThing " + name+","+x+","+y);
     var ent = { name:name, x:x, y:y };
     things[numthings] = ent;
     numthings++;
@@ -82,19 +89,29 @@ function addThing(name,x,y) {
 }
 
 function addFolk(name,x,y) {
-    if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
+    //if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
     var ent = { name:name, x:x, y:y };
     folks[numfolks] = ent;
     numfolks++;
     return ent;
 }
 
-function onclick(e) {
-    if (DEBUGMODE) console.log("click " + e.clientX+","+e.clientY);
+function onmousemove(e) {
+    mouseX = -screenW2 + ((e.clientX - camX) * zoom);
+    mouseY = -screenH2 + ((e.clientY - camY) * zoom);
+}
+
+function onmouseup(e) {
+    mouseX = -screenW2 + ((e.clientX - camX) * zoom);
+    mouseY = -screenH2 + ((e.clientY - camY) * zoom);
+}
+
+function onmousedown(e) {
+    if (DEBUGMODE) console.log("onmousedown " + e.clientX+","+e.clientY);
     
     // in world coordinates
-    mouseX = (e.clientX - camX) * zoom;
-    mouseY = (e.clientY - camY) * zoom;
+    mouseX = -screenW2 + ((e.clientX - camX) * zoom);
+    mouseY = -screenH2 + ((e.clientY - camY) * zoom);
 
     addThing("flower", mouseX, mouseY);
     //addFolk("Joe Schmoe", mouseX, mouseY);
@@ -135,6 +152,18 @@ function onkeyup(e) {
 }
 
 function step() {
+
+    if (frame==0) { // very first frame when all has loaded
+        if (DEBUGMODE) console.log("Loading level!");
+        // load level
+        addThing("corner",0,0);
+        for (i=0; i<1000; i++) {
+            addThing("prop",Math.random()*worldW,Math.random()*worldH);
+        }
+        renderWorld();
+    }
+
+
     frame++;
 
     // scroll camera
@@ -149,8 +178,8 @@ function step() {
     if (camY>worldH-screenH) camY=worldH-screenH;
 
     // lerp zoom
-    if (zoom>zoomSmooth) zoomSmooth += ZOOMSPD;
-    if (zoom<zoomSmooth) zoomSmooth -= ZOOMSPD;
+    if (zoom>zoomSmooth) { zoomSmooth+=ZOOMSPD; }
+    if (zoom<zoomSmooth) { zoomSmooth-=ZOOMSPD; }
     // close enough to snap
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
@@ -161,7 +190,8 @@ function renderScreen() {
     
     // the static world terrain bg
     // unzoomed: works // screenCTX.drawImage(worldCanvas,camX,camY,screenW,screenH,0,0,screenW,screenH);
-    screenCTX.drawImage(worldCanvas,camX,camY,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
+    // zoomed+uncentered // screenCTX.drawImage(worldCanvas,camX,camY,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
+    screenCTX.drawImage(worldCanvas,camX-screenW2,camY-screenH2,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
     
     // all dynamic objects
     for (i=0; i<numfolks; i++) {
@@ -170,6 +200,14 @@ function renderScreen() {
 
     // test
     screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3-camX,screenH/2-camY);
+
+    // debug gui
+    if (DEBUGMODE) {
+        debugDiv.innerHTML = 
+            "Frame:" + frame +
+            " Cam:" + camX + "," + camY +
+            " Mouse:" + mouseX + "," + mouseY;
+    }
 
 }
 
