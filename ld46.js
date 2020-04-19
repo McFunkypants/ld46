@@ -13,6 +13,7 @@ const worldW = 8000;
 const worldH = 4500;
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
+var dragging, dragStartX, dragStartY;
 var worldCanvas, worldCTX; 
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
@@ -96,22 +97,44 @@ function addFolk(name,x,y) {
     return ent;
 }
 
+var prevClientX = 0;
+var prevClientY = 0;
+var mouseDeltaX = 0;
+var mouseDeltaY = 0;
+
+function updateMousePos(e) { // in WORLD coords
+    mouseX = Math.round((-screenW2+e.clientX)*zoomSmooth)+camX;
+    mouseY = Math.round((-screenH2+e.clientY)*zoomSmooth)+camY;
+}
+
 function onmousemove(e) {
-    mouseX = -screenW2 + ((e.clientX - camX) * zoom);
-    mouseY = -screenH2 + ((e.clientY - camY) * zoom);
+    updateMousePos(e);
+    if (dragging) {
+        mouseDeltaX = prevClientX - e.clientX;
+        mouseDeltaY = prevClientY - e.clientY;
+        camX += mouseDeltaX*zoomSmooth;
+        camY += mouseDeltaY*zoomSmooth;
+    }
+    prevClientX = e.clientX;
+    prevClientY = e.clientY;
+
 }
 
 function onmouseup(e) {
-    mouseX = -screenW2 + ((e.clientX - camX) * zoom);
-    mouseY = -screenH2 + ((e.clientY - camY) * zoom);
+    updateMousePos(e);
+    dragging = false;
+    //mouseX = -(screenW2*zoomSmooth) + ((e.clientX - camX) * zoom);
+    //mouseY = -(screenH2*zoomSmooth) + ((e.clientY - camY) * zoom);
 }
 
 function onmousedown(e) {
     if (DEBUGMODE) console.log("onmousedown " + e.clientX+","+e.clientY);
     
-    // in world coordinates
-    mouseX = -screenW2 + ((e.clientX - camX) * zoom);
-    mouseY = -screenH2 + ((e.clientY - camY) * zoom);
+    updateMousePos(e);
+    
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
 
     addThing("flower", mouseX, mouseY);
     //addFolk("Joe Schmoe", mouseX, mouseY);
@@ -191,7 +214,7 @@ function renderScreen() {
     // the static world terrain bg
     // unzoomed: works // screenCTX.drawImage(worldCanvas,camX,camY,screenW,screenH,0,0,screenW,screenH);
     // zoomed+uncentered // screenCTX.drawImage(worldCanvas,camX,camY,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
-    screenCTX.drawImage(worldCanvas,camX-screenW2,camY-screenH2,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
+    screenCTX.drawImage(worldCanvas,camX-(screenW2*zoomSmooth),camY-(screenH2*zoomSmooth),screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
     
     // all dynamic objects
     for (i=0; i<numfolks; i++) {
