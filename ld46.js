@@ -7,10 +7,11 @@
 const DEBUGMODE = true;
 const DEBUG_PROPS = 100000;
 const CAMSPD = 4;
+const DRAGTHRESHOLD = 3; // how many pixels dist to count
 const MAXZOOM = 10;
 const MINZOOM = 1;
 const ZOOMSPD = 0.1;
-const worldW = 8000;
+const worldW = 8000; // can be too big for really old phones
 const worldH = 4500;
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
@@ -122,8 +123,8 @@ function onmouseup(e) {
     updateMousePos(e);
     dragging = false;
     // only if we did not drag far
-    if ((Math.abs(dragStartX-e.clientX)<4) ||
-        (Math.abs(dragStartY-e.clientY)<4))
+    if ((Math.abs(dragStartX-e.clientX)<DRAGTHRESHOLD) ||
+        (Math.abs(dragStartY-e.clientY)<DRAGTHRESHOLD))
      {
         addThing("flower", mouseX, mouseY);
         renderWorld(); // redraw the giant world and all things[]
