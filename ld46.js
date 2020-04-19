@@ -7,6 +7,7 @@
 const DEBUGMODE = true;
 const DEBUGAI = true;
 const DEBUG_PROPS = 10000;
+const FOLKRADIUS = 32;
 const CAMSPD = 4;
 const DRAGTHRESHOLD = 3; // how many pixels dist to count
 const MAXZOOM = 10;
@@ -103,7 +104,7 @@ function aiExplore() {
 
     this.ExploreTimer--;
     if (this.ExploreTimer<0) {
-        if (DEBUGAI) console.log("aiExplore: time to change directions!");
+        //if (DEBUGAI) console.log("aiExplore: time to change directions!");
         this.ExploreAngle = randomAngleRadians();
         this.ExploreTimer = rndInt(60,240);
     }
@@ -149,7 +150,7 @@ function addThing(name,x,y) {
 
 function addFolk(name,x,y) {
     if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
-    var ent = { name:name, x:x, y:y, aimAngleRadians:0, ai:aiExplore };
+    var ent = { name:name, x:x, y:y, r:FOLKRADIUS, aimAngleRadians:0, ai:aiExplore };
     folks[numfolks] = ent;
     numfolks++;
     return ent;
@@ -176,6 +177,7 @@ function updateMousePos(e) { // in WORLD coords
 }
 
 function onmousemove(e) {
+    
     updateMousePos(e);
     mouseDeltaX = prevClientX - e.clientX;
     mouseDeltaY = prevClientY - e.clientY;
@@ -188,6 +190,21 @@ function onmousemove(e) {
     prevClientX = e.clientX;
     prevClientY = e.clientY;
 
+    // who are we hovering?
+    var d,f;
+    for (i=0; i<numfolks; i++) {
+        f = folks[i];
+        d = dist(f.x,f.y,mouseX,mouseY);
+        if (d < f.r) { // inside radius?
+            console.log("hovering folk#"+i+" name:"+f.name);
+        }
+
+    }
+
+}
+
+function dist(x1,y1,x2,y2) {
+    return Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
 }
 
 function onmouseup(e) {
@@ -279,7 +296,7 @@ function step() {
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
     if (Math.random()<0.01) {
-        addFolk("spawnee",mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
+        addFolk("spawn"+numfolks,mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
     }
 
     for (i=0; i<numfolks; i++) {
