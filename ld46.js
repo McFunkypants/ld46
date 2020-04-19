@@ -23,8 +23,8 @@ var menuGUI;
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
-var things, numthings, folks, numfolks;
-var x, y, i, num, debugDiv;
+var things, numthings, folks, numfolks, hoveringFolk;
+var x, y, i, num, debugDiv, ent;
 
 window.addEventListener("load", init);
 
@@ -176,6 +176,29 @@ function updateMousePos(e) { // in WORLD coords
     mouseY = Math.round(((-screenH2+e.clientY)*zoomSmooth)+camY);
 }
 
+function collideFolk(x,y) {
+    for (i=0; i<numfolks; i++) {
+        if (dist(folks[i].x,folks[i].y,x,y) < folks[i].r) { 
+            return folks[i];
+        }
+    }
+    return null;
+}
+
+function nearestFolk(x,y) {
+    var closest = null;
+    var closestDist = 999999999;
+    var d = 0;
+    for (i=0; i<numfolks; i++) {
+        d = dist(folks[i].x,folks[i].y,x,y);
+        if (d < closestDist) { 
+            closestDist = d;
+            closest = folks[i];
+        }
+    }
+    return closest;
+}
+
 function onmousemove(e) {
     
     updateMousePos(e);
@@ -190,15 +213,9 @@ function onmousemove(e) {
     prevClientX = e.clientX;
     prevClientY = e.clientY;
 
-    // who are we hovering?
-    var d,f;
-    for (i=0; i<numfolks; i++) {
-        f = folks[i];
-        d = dist(f.x,f.y,mouseX,mouseY);
-        if (d < f.r) { // inside radius?
-            console.log("hovering folk#"+i+" name:"+f.name);
-        }
-
+    hoveringFolk = collideFolk(mouseX,mouseY);
+    if (hoveringFolk) {
+        if (DEBUGMODE) console.log("hovering "+hoveringFolk.name+" at "+hoveringFolk.x.toFixed(1)+","+hoveringFolk.y.toFixed(1));
     }
 
 }
