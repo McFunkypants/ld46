@@ -103,8 +103,8 @@ var mouseDeltaX = 0;
 var mouseDeltaY = 0;
 
 function updateMousePos(e) { // in WORLD coords
-    mouseX = Math.round((-screenW2+e.clientX)*zoomSmooth)+camX;
-    mouseY = Math.round((-screenH2+e.clientY)*zoomSmooth)+camY;
+    mouseX = Math.round(((-screenW2+e.clientX)*zoomSmooth)+camX);
+    mouseY = Math.round(((-screenH2+e.clientY)*zoomSmooth)+camY);
 }
 
 function onmousemove(e) {
@@ -114,6 +114,8 @@ function onmousemove(e) {
         mouseDeltaY = prevClientY - e.clientY;
         camX += mouseDeltaX*zoomSmooth;
         camY += mouseDeltaY*zoomSmooth;
+        camX = Math.round(camX);
+        camY = Math.round(camY);
     }
     prevClientX = e.clientX;
     prevClientY = e.clientY;
@@ -180,7 +182,7 @@ function step() {
         if (DEBUGMODE) console.log("Loading level!");
         // load level
         addThing("corner",0,0);
-        for (i=0; i<1000; i++) {
+        for (i=0; i<10000; i++) {
             addThing("prop",Math.random()*worldW,Math.random()*worldH);
         }
         renderWorld();
