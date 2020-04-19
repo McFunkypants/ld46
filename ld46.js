@@ -8,13 +8,16 @@ const DEBUGMODE = true;
 const DEBUGAI = true;
 const DEBUG_PROPS = 10000;
 const FOLKRADIUS = 32;
+const THINGRADIUS = 32;
 const CAMSPD = 4;
-const DRAGTHRESHOLD = 3; // how many pixels dist to count
+const DRAGTHRESHOLD = 3;
 const MAXZOOM = 10;
 const MINZOOM = 1;
 const ZOOMSPD = 0.1;
-const worldW = 8000; // can be too big for really old phones
-const worldH = 4500;
+const AISPD = 0.5;
+const AITURNSPD = 0.05;
+const WORLDW = 8000;
+const WORLDH = 4500;
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
 var dragging, dragStartX, dragStartY, prevClientX, prevClientY, mouseDeltaX, mouseDeltaY;
@@ -58,8 +61,8 @@ function init() {
     resize();
 
     worldCanvas = document.createElement("canvas");
-    worldCanvas.width = worldW;
-    worldCanvas.height = worldH;
+    worldCanvas.width = WORLDW;
+    worldCanvas.height = WORLDH;
     worldCTX = worldCanvas.getContext('2d');
 
     music = document.createElement("audio");
@@ -95,9 +98,6 @@ function randomAngleRadians() {
 
 // move randomly using car-like turns!
 function aiExplore() {
-    var speed = 0.5;
-    var turnspeed = 0.05;
-    
     // choose a random direction to travel from time to time
     if (this.ExploreTimer==undefined) this.ExploreTimer = 30;
     if (this.ExploreAngle==undefined) this.ExploreAngle = this.aimAngleRadians;
@@ -113,13 +113,13 @@ function aiExplore() {
     // rotate in the shortet direction
     if(this.aimAngleRadians < this.ExploreAngle) {
         if(Math.abs(this.aimAngleRadians - this.ExploreAngle)<180)
-        this.aimAngleRadians += turnspeed;
-        else this.aimAngleRadians -= turnspeed;
+        this.aimAngleRadians += AITURNSPD;
+        else this.aimAngleRadians -= AITURNSPD;
     }
     else {
         if(Math.abs(this.aimAngleRadians - this.ExploreAngle)<180)
-        this.aimAngleRadians -= turnspeed;
-        else this.aimAngleRadians += turnspeed;
+        this.aimAngleRadians -= AITURNSPD;
+        else this.aimAngleRadians += AITURNSPD;
     }
     // stay in 0..360 range
     if (this.aimAngleRadians>Math.PI*2) this.aimAngleRadians -= Math.PI*2;
@@ -128,8 +128,8 @@ function aiExplore() {
 
 
     // move in the direction we are facing
-    this.x += speed * Math.cos(this.aimAngleRadians);
-    this.y += speed * Math.sin(this.aimAngleRadians);
+    this.x += AISPD * Math.cos(this.aimAngleRadians);
+    this.y += AISPD * Math.sin(this.aimAngleRadians);
 }
 
 function resize() {
@@ -142,7 +142,7 @@ function resize() {
 
 function addThing(name,x,y) {
     //if (DEBUGMODE) console.log("addThing " + name+","+x+","+y);
-    var ent = { name:name, x:x, y:y };
+    var ent = { name:name, x:x, y:y, r:THINGRADIUS };
     things[numthings] = ent;
     numthings++;
     return ent;
@@ -176,27 +176,37 @@ function updateMousePos(e) { // in WORLD coords
     mouseY = Math.round(((-screenH2+e.clientY)*zoomSmooth)+camY);
 }
 
-function collideFolk(x,y) {
-    for (i=0; i<numfolks; i++) {
-        if (dist(folks[i].x,folks[i].y,x,y) < folks[i].r) { 
-            return folks[i];
+function collide(pool,x,y) {
+    for (i=0; i<pool.length; i++) {
+        if (dist(pool[i].x,pool[i].y,x,y) < pool[i].r) { 
+            return pool[i];
         }
     }
     return null;
 }
 
-function nearestFolk(x,y) {
+function nearest(pool,x,y) {
     var closest = null;
     var closestDist = 999999999;
     var d = 0;
-    for (i=0; i<numfolks; i++) {
-        d = dist(folks[i].x,folks[i].y,x,y);
+    for (i=0; i<pool.length; i++) {
+        d = dist(pool[i].x,pool[i].y,x,y);
         if (d < closestDist) { 
             closestDist = d;
-            closest = folks[i];
+            closest = pool[i];
         }
     }
     return closest;
+}
+
+function allEntitiesInRange(pool,x,y,range) {
+    var found = []; // FIXME GC every frame
+    for (i=0; i<pool.length; i++) {
+        if (dist(pool[i].x,pool[i].y,x,y) <= range) { 
+            found.push(pool[i]);
+        }
+    }
+    return found;
 }
 
 function onmousemove(e) {
@@ -213,7 +223,14 @@ function onmousemove(e) {
     prevClientX = e.clientX;
     prevClientY = e.clientY;
 
-    hoveringFolk = collideFolk(mouseX,mouseY);
+    /*
+    var nearby = allEntitiesInRange(folks,mouseX,mouseY,200);
+    if (nearby.length) {
+        if (DEBUGMODE) console.log("nearby folks: "+nearby.length);
+    }
+    */
+    
+    hoveringFolk = collide(folks,mouseX,mouseY);
     if (hoveringFolk) {
         if (DEBUGMODE) console.log("hovering "+hoveringFolk.name+" at "+hoveringFolk.x.toFixed(1)+","+hoveringFolk.y.toFixed(1));
     }
@@ -286,7 +303,7 @@ function loadWorld() {
     //addThing("corner",0,0); // test
     //addFolk("corner",0,0); // test
     for (i=0; i<DEBUG_PROPS; i++) {
-        addThing("prop"+i,Math.random()*worldW,Math.random()*worldH);
+        addThing("prop"+i,Math.random()*WORLDW,Math.random()*WORLDH);
     }
     renderWorld();
 }
@@ -303,8 +320,8 @@ function step() {
     // stay in bounds
     if (camX<0) camX=0;
     if (camY<0) camY=0;
-    if (camX>worldW-screenW) camX=worldW-screenW;
-    if (camY>worldH-screenH) camY=worldH-screenH;
+    if (camX>WORLDW-screenW) camX=WORLDW-screenW;
+    if (camY>WORLDH-screenH) camY=WORLDH-screenH;
 
     // lerp zoom
     if (zoom>zoomSmooth) { zoomSmooth+=ZOOMSPD; }
@@ -353,7 +370,7 @@ function renderScreen() {
 
 function renderWorld() { // slow
     if (DEBUGMODE) console.log("renderWorld with "+numthings+" things");
-    worldCTX.clearRect(0,0,worldW,worldH);
+    worldCTX.clearRect(0,0,WORLDW,WORLDH);
     for (i=0; i<numthings; i++) {
         worldCTX.drawImage(spritesheet,things[i].x,things[i].y);
     }
