@@ -25,6 +25,7 @@ div, a {
 
 a {
     background:white;
+    text-decoration:none;
 }
 a:hover {
     background:orange;

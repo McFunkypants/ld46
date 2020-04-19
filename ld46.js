@@ -5,7 +5,8 @@
 "use strict";
 
 const DEBUGMODE = true;
-const DEBUG_PROPS = 100000;
+const DEBUGAI = true;
+const DEBUG_PROPS = 10000;
 const CAMSPD = 4;
 const DRAGTHRESHOLD = 3; // how many pixels dist to count
 const MAXZOOM = 10;
@@ -17,6 +18,7 @@ const worldH = 4500;
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
 var dragging, dragStartX, dragStartY, prevClientX, prevClientY, mouseDeltaX, mouseDeltaY;
 var worldCanvas, worldCTX; 
+var menuGUI;
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
@@ -47,6 +49,8 @@ function init() {
         debugDiv.style.right = "0px";
     }
 
+    menuGUI = document.getElementById('menu');
+
     screenCanvas = document.createElement("canvas");
     document.body.appendChild(screenCanvas);
     screenCTX = screenCanvas.getContext('2d');
@@ -75,6 +79,58 @@ function init() {
 
 }
 
+function rndInt(minimum, maximum) {
+    return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
+}
+
+function rndRange(minimum, maximum) {
+    return Math.random() * (maximum - minimum + 1) + minimum;
+}
+
+// random from 0..360 deg (0..2pi)
+function randomAngleRadians() {
+    return Math.random()*Math.PI*2;
+}
+
+// move randomly using car-like turns!
+function aiExplore() {
+    var speed = 0.5;
+    var turnspeed = 0.05;
+    
+    // choose a random direction to travel from time to time
+    if (this.ExploreTimer==undefined) this.ExploreTimer = 30;
+    if (this.ExploreAngle==undefined) this.ExploreAngle = this.aimAngleRadians;
+
+    this.ExploreTimer--;
+    if (this.ExploreTimer<0) {
+        if (DEBUGAI) console.log("aiExplore: time to change directions!");
+        this.ExploreAngle = randomAngleRadians();
+        this.ExploreTimer = rndInt(60,240);
+    }
+
+    
+    // rotate in the shortet direction
+    if(this.aimAngleRadians < this.ExploreAngle) {
+        if(Math.abs(this.aimAngleRadians - this.ExploreAngle)<180)
+        this.aimAngleRadians += turnspeed;
+        else this.aimAngleRadians -= turnspeed;
+    }
+    else {
+        if(Math.abs(this.aimAngleRadians - this.ExploreAngle)<180)
+        this.aimAngleRadians -= turnspeed;
+        else this.aimAngleRadians += turnspeed;
+    }
+    // stay in 0..360 range
+    if (this.aimAngleRadians>Math.PI*2) this.aimAngleRadians -= Math.PI*2;
+    if (this.aimAngleRadians<0) this.aimAngleRadians += Math.PI*2;
+
+
+
+    // move in the direction we are facing
+    this.x += speed * Math.cos(this.aimAngleRadians);
+    this.y += speed * Math.sin(this.aimAngleRadians);
+}
+
 function resize() {
     screenW = screenCanvas.width = window.innerWidth;
     screenH = screenCanvas.height = window.innerHeight;
@@ -92,11 +148,26 @@ function addThing(name,x,y) {
 }
 
 function addFolk(name,x,y) {
-    //if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
-    var ent = { name:name, x:x, y:y };
+    if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
+    var ent = { name:name, x:x, y:y, aimAngleRadians:0, ai:aiExplore };
     folks[numfolks] = ent;
     numfolks++;
     return ent;
+}
+
+function playButton() {
+    if (DEBUGMODE) console.log("playButton");
+    menuGUI.style.display = 'none';
+}
+
+function optionsButton() {
+    if (DEBUGMODE) console.log("optionsButton");
+    menuGUI.style.display = 'none';
+}
+
+function creditsButton() {
+    if (DEBUGMODE) console.log("creditsButton");
+    menuGUI.style.display = 'none';
 }
 
 function updateMousePos(e) { // in WORLD coords
@@ -127,6 +198,7 @@ function onmouseup(e) {
         (Math.abs(dragStartY-e.clientY)<DRAGTHRESHOLD))
      {
         addThing("flower", mouseX, mouseY);
+
         renderWorld(); // redraw the giant world and all things[]
     }
 }
@@ -177,7 +249,8 @@ function onkeyup(e) {
 function loadWorld() {
     if (DEBUGMODE) console.log("Loading world...");
     // load level
-    addThing("corner",0,0);
+    //addThing("corner",0,0); // test
+    //addFolk("corner",0,0); // test
     for (i=0; i<DEBUG_PROPS; i++) {
         addThing("prop"+i,Math.random()*worldW,Math.random()*worldH);
     }
@@ -205,6 +278,14 @@ function step() {
     // close enough to snap
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
+    if (Math.random()<0.01) {
+        addFolk("spawnee",mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
+    }
+
+    for (i=0; i<numfolks; i++) {
+        if (folks[i].ai) folks[i].ai();
+    }
+
 }
 
 function renderScreen() {
@@ -217,11 +298,14 @@ function renderScreen() {
     
     // all dynamic objects
     for (i=0; i<numfolks; i++) {
-        screenCTX.drawImage(spritesheet,folks[i].x-camX,folks[i].y-camY);
+        //screenCTX.drawImage(spritesheet,folks[i].x-camX,folks[i].y-camY);
+        
+        // full size but in scaled position
+        screenCTX.drawImage(spritesheet,(folks[i].x-camX)/zoomSmooth+screenW2,(folks[i].y-camY)/zoomSmooth+screenH2);
     }
 
     // test
-    screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3-camX,screenH/2-camY);
+    //screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3-camX,screenH/2-camY);
 
     // debug gui
     if (DEBUGMODE) {
@@ -233,7 +317,7 @@ function renderScreen() {
 
 }
 
-function renderWorld() {
+function renderWorld() { // slow
     if (DEBUGMODE) console.log("renderWorld with "+numthings+" things");
     worldCTX.clearRect(0,0,worldW,worldH);
     for (i=0; i<numthings; i++) {
