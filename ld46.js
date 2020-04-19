@@ -5,6 +5,7 @@
 "use strict";
 
 const DEBUGMODE = true;
+const DEBUG_PROPS = 100000;
 const CAMSPD = 4;
 const MAXZOOM = 10;
 const MINZOOM = 1;
@@ -13,7 +14,7 @@ const worldW = 8000;
 const worldH = 4500;
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
-var dragging, dragStartX, dragStartY;
+var dragging, dragStartX, dragStartY, prevClientX, prevClientY, mouseDeltaX, mouseDeltaY;
 var worldCanvas, worldCTX; 
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
@@ -41,8 +42,8 @@ function init() {
     if (DEBUGMODE) {
         debugDiv = document.createElement("div");
         document.body.appendChild(debugDiv);
-        debugDiv.style.bottom = "32px";
-        debugDiv.style.right = "32px";
+        debugDiv.style.bottom = "0px";
+        debugDiv.style.right = "0px";
     }
 
     screenCanvas = document.createElement("canvas");
@@ -61,7 +62,7 @@ function init() {
 
     spritesheet = new Image();
     spritesheet.src = 'ld46.png'; 
-    spritesheet.onload = animate;
+    spritesheet.onload = start;
 
     window.addEventListener("mousedown", onmousedown);
     window.addEventListener("mousemove", onmousemove);
@@ -97,11 +98,6 @@ function addFolk(name,x,y) {
     return ent;
 }
 
-var prevClientX = 0;
-var prevClientY = 0;
-var mouseDeltaX = 0;
-var mouseDeltaY = 0;
-
 function updateMousePos(e) { // in WORLD coords
     mouseX = Math.round(((-screenW2+e.clientX)*zoomSmooth)+camX);
     mouseY = Math.round(((-screenH2+e.clientY)*zoomSmooth)+camY);
@@ -109,9 +105,9 @@ function updateMousePos(e) { // in WORLD coords
 
 function onmousemove(e) {
     updateMousePos(e);
+    mouseDeltaX = prevClientX - e.clientX;
+    mouseDeltaY = prevClientY - e.clientY;
     if (dragging) {
-        mouseDeltaX = prevClientX - e.clientX;
-        mouseDeltaY = prevClientY - e.clientY;
         camX += mouseDeltaX*zoomSmooth;
         camY += mouseDeltaY*zoomSmooth;
         camX = Math.round(camX);
@@ -125,8 +121,13 @@ function onmousemove(e) {
 function onmouseup(e) {
     updateMousePos(e);
     dragging = false;
-    //mouseX = -(screenW2*zoomSmooth) + ((e.clientX - camX) * zoom);
-    //mouseY = -(screenH2*zoomSmooth) + ((e.clientY - camY) * zoom);
+    // only if we did not drag far
+    if ((Math.abs(dragStartX-e.clientX)<4) ||
+        (Math.abs(dragStartY-e.clientY)<4))
+     {
+        addThing("flower", mouseX, mouseY);
+        renderWorld(); // redraw the giant world and all things[]
+    }
 }
 
 function onmousedown(e) {
@@ -137,10 +138,6 @@ function onmousedown(e) {
     dragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-
-    addThing("flower", mouseX, mouseY);
-    //addFolk("Joe Schmoe", mouseX, mouseY);
-    renderWorld(); // redraw the giant world and all things[]
 
     if (!userHasInteracted) {
         if (DEBUGMODE) console.log("playing music");
@@ -176,18 +173,17 @@ function onkeyup(e) {
     if(e.keyCode == 37 || e.keyCode == 65 || e.keyCode == 81) { left = false; }
 }
 
-function step() {
-
-    if (frame==0) { // very first frame when all has loaded
-        if (DEBUGMODE) console.log("Loading level!");
-        // load level
-        addThing("corner",0,0);
-        for (i=0; i<10000; i++) {
-            addThing("prop",Math.random()*worldW,Math.random()*worldH);
-        }
-        renderWorld();
+function loadWorld() {
+    if (DEBUGMODE) console.log("Loading world...");
+    // load level
+    addThing("corner",0,0);
+    for (i=0; i<DEBUG_PROPS; i++) {
+        addThing("prop"+i,Math.random()*worldW,Math.random()*worldH);
     }
+    renderWorld();
+}
 
+function step() {
 
     frame++;
 
@@ -248,4 +244,10 @@ function animate() {
     step();
     renderScreen();
     requestAnimationFrame(animate);
+}
+
+function start() { // done loading
+    if (DEBUGMODE) console.log("START");
+    loadWorld();
+    animate();
 }
