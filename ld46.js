@@ -27,7 +27,7 @@ Made with love by McFunkypants http://mcfunkypants.com
 
 const DEBUGMODE = true;
 const DEBUGAI = true;
-const DEBUG_PROPS = 10000;
+const DEBUG_PROPS = 1000;
 const FOLKRADIUS = 32;
 const THINGRADIUS = 32;
 const CAMSPD = 4;
@@ -37,8 +37,43 @@ const MINZOOM = 1;
 const ZOOMSPD = 0.1;
 const AISPD = 0.5;
 const AITURNSPD = 0.05;
-const WORLDW = 8000;
-const WORLDH = 4500;
+const WORLDW = 10000;
+const WORLDH = 10000;
+
+// spritesheet
+const SPRITESHEETW = 4096;
+const SSCOLS = 16;
+const SPRW = SPRITESHEETW / SSCOLS;
+const SPRH = SPRW;
+var SS = {
+    grass1:{x:0*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass2:{x:1*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass3:{x:2*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass4:{x:3*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass5:{x:4*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass6:{x:5*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass7:{x:6*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    grass8:{x:7*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+
+    rock1:{x:8*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock2:{x:9*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock3:{x:10*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock4:{x:11*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock5:{x:12*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock6:{x:13*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock7:{x:14*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+    rock8:{x:15*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
+
+    plant1:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant2:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant3:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant4:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant5:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant6:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant7:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant8:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+
+};
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
 var dragging, dragStartX, dragStartY, prevClientX, prevClientY, mouseDeltaX, mouseDeltaY;
@@ -324,7 +359,9 @@ function loadWorld() {
     //addThing("corner",0,0); // test
     //addFolk("corner",0,0); // test
     for (i=0; i<DEBUG_PROPS; i++) {
-        addThing("prop"+i,Math.random()*WORLDW,Math.random()*WORLDH);
+        addThing("grass"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
+        addThing("plant"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
+        addThing("rock"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
     }
     renderWorld();
 }
@@ -393,7 +430,17 @@ function renderWorld() { // slow
     if (DEBUGMODE) console.log("renderWorld with "+numthings+" things");
     worldCTX.clearRect(0,0,WORLDW,WORLDH);
     for (i=0; i<numthings; i++) {
-        worldCTX.drawImage(spritesheet,things[i].x,things[i].y);
+        // entire bitmap, works:
+        //worldCTX.drawImage(spritesheet,things[i].x,things[i].y);
+        
+        // spritesheet draw
+        var spr = SS[things[i].name];
+        if (spr) { // sprite exists?
+            worldCTX.drawImage(spritesheet,spr.x,spr.y,spr.w,spr.h,things[i].x,things[i].y,spr.w,spr.h);
+        } else {
+            if (DEBUGMODE) console.log("unknown sprite name: "+ things[i].name);
+        }
+
     }
 }
 
