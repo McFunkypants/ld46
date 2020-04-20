@@ -39,18 +39,21 @@ const AISPD = 0.5;
 const AITURNSPD = 0.05;
 const WORLDW = 10000;
 const WORLDH = 10000;
+const LOGOFADESPD = 0.01;
 
 // gui layout, on-screen small sizes
-const SCOREW = 256/2;
-const SCOREH = 192/2;
+const SCOREW = 256;//256/2;
+const SCOREH = 192;//192/2;
 const BBARW = 448/2;
 const BBARH = 160/2;
 const QUESTW = 288;
 const QUESTH = 112;
 const LOGOW = 448;
 const LOGOH = 448;
-const FOLKW = 64;
-const FOLKH = 64;
+const FOLKW = 48;
+const FOLKH = 48;
+const GUIFOLKW = 88;
+const GUIFOLKH = 88;
 const PINW = 64;
 const PINH = 96;
 
@@ -116,12 +119,12 @@ var SS = {
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
 var dragging, dragStartX, dragStartY, prevClientX, prevClientY, mouseDeltaX, mouseDeltaY;
 var worldCanvas, worldCTX; 
-var menuGUI;
+var menuGUI, logoAlpha;
 var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
 var things, numthings, folks, numfolks, hoveringFolk;
-var x, y, i, num, debugDiv, ent;
+var x, y, i, spr, num, debugDiv, ent;
 
 window.addEventListener("load", init);
 
@@ -129,8 +132,8 @@ function init() {
     if (DEBUGMODE) console.log("init");
 
     frame = 0;
-    camX = 0;
-    camY = 0;
+    camX = Math.round(WORLDW/2);
+    camY = Math.round(WORLDH/2);
     mouseX = 0;
     mouseY = 0;
     zoom = 1;
@@ -139,6 +142,7 @@ function init() {
     numthings = 0;
     folks = [];
     numfolks = 0;
+    logoAlpha = 2;
 
     if (DEBUGMODE) {
         debugDiv = document.createElement("div");
@@ -164,7 +168,7 @@ function init() {
     music.src = "ld46.mp3";
 
     spritesheet = new Image();
-    spritesheet.src = 'spritesheet_small.png';//'ld46.png'; 
+    spritesheet.src = 'ld46.png'; 
     spritesheet.onload = start;
 
     window.addEventListener("mousedown", onmousedown);
@@ -234,17 +238,17 @@ function resize() {
     if (DEBUGMODE) console.log("resize "+screenW+"x"+screenH);
 }
 
-function addThing(name,x,y) {
+function addThing(name,targetX,targetY) {
     //if (DEBUGMODE) console.log("addThing " + name+","+x+","+y);
-    var ent = { name:name, x:x, y:y, r:THINGRADIUS };
+    var ent = { name:name, x:targetX, y:targetY, r:THINGRADIUS };
     things[numthings] = ent;
     numthings++;
     return ent;
 }
 
-function addFolk(name,x,y) {
-    if (DEBUGMODE) console.log("addFolk " + name+","+x+","+y);
-    var ent = { name:name, x:x, y:y, r:FOLKRADIUS, aimAngleRadians:0, ai:aiExplore };
+function addFolk(name,targetX,targetY) {
+    if (DEBUGMODE) console.log("addFolk " + name+","+targetX+","+targetY);
+    var ent = { name:name, x:targetX, y:targetY, r:FOLKRADIUS, aimAngleRadians:0, ai:aiExplore };
     folks[numfolks] = ent;
     numfolks++;
     return ent;
@@ -270,21 +274,21 @@ function updateMousePos(e) { // in WORLD coords
     mouseY = Math.round(((-screenH2+e.clientY)*zoomSmooth)+camY);
 }
 
-function collide(pool,x,y) {
+function collide(pool,targetX,targetY) {
     for (i=0; i<pool.length; i++) {
-        if (dist(pool[i].x,pool[i].y,x,y) < pool[i].r) { 
+        if (dist(pool[i].x,pool[i].y,targetX,targetY) < pool[i].r) { 
             return pool[i];
         }
     }
     return null;
 }
 
-function nearest(pool,x,y) {
+function nearest(pool,targetX,targetY) {
     var closest = null;
     var closestDist = 999999999;
     var d = 0;
     for (i=0; i<pool.length; i++) {
-        d = dist(pool[i].x,pool[i].y,x,y);
+        d = dist(pool[i].x,pool[i].y,targetX,targetY);
         if (d < closestDist) { 
             closestDist = d;
             closest = pool[i];
@@ -293,10 +297,10 @@ function nearest(pool,x,y) {
     return closest;
 }
 
-function allEntitiesInRange(pool,x,y,range) {
+function allEntitiesInRange(pool,targetX,targetY,range) {
     var found = []; // warning: creates GC
     for (i=0; i<pool.length; i++) {
-        if (dist(pool[i].x,pool[i].y,x,y) <= range) { 
+        if (dist(pool[i].x,pool[i].y,targetX,targetY) <= range) { 
             found.push(pool[i]);
         }
     }
@@ -444,30 +448,17 @@ function renderScreen() {
     // zoomed+uncentered // screenCTX.drawImage(worldCanvas,camX,camY,screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
     screenCTX.drawImage(worldCanvas,camX-(screenW2*zoomSmooth),camY-(screenH2*zoomSmooth),screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
     
-    // all dynamic objects
-    var spr, fx, fy;
     for (i=0; i<numfolks; i++) {
-        //screenCTX.drawImage(spritesheet,folks[i].x-camX,folks[i].y-camY);
-        
-        // full size but in scaled position
-        //screenCTX.drawImage(spritesheet,(folks[i].x-camX)/zoomSmooth+screenW2,(folks[i].y-camY)/zoomSmooth+screenH2);
-
-        fx = (folks[i].x-camX)/zoomSmooth+screenW2;
-        fy = (folks[i].y-camY)/zoomSmooth+screenH2;
-        
-        screenCTX.drawImage(spritesheet,SS.pin.x,SS.pin.y,SS.pin.w,SS.pin.h,
-            fx,fy,PINW,PINH);
-
-        // SS style
+        x = (folks[i].x-camX)/zoomSmooth+screenW2;
+        y = (folks[i].y-camY)/zoomSmooth+screenH2;
+        // map pin
+        screenCTX.drawImage(spritesheet,SS.pin.x,SS.pin.y,SS.pin.w,SS.pin.h,x,y,PINW,PINH);
+        // folk icon
         spr = SS[folks[i].name];
         if (spr) {
-            screenCTX.drawImage(spritesheet, spr.x, spr.y, spr.w, spr.h,
-                fx,fy,FOLKW,FOLKH);
+            screenCTX.drawImage(spritesheet,spr.x,spr.y,spr.w,spr.h,x+8,y+16,FOLKW,FOLKH);
         }
     }
-
-    // test
-    //screenCTX.drawImage(spritesheet,screenW/2+Math.cos(frame/100)*screenW/3-camX,screenH/2-camY);
 
     // debug gui
     if (DEBUGMODE) {
@@ -484,13 +475,35 @@ function renderScreen() {
 function renderGUI() {
 
     // logo middle
-    screenCTX.drawImage(spritesheet,SS.logo.x,SS.logo.y,SS.logo.w,SS.logo.h,Math.round(screenW/2-LOGOW/2),Math.round(screenH/2-LOGOH/2),LOGOW,LOGOH);    
+    if (logoAlpha>0) {
+        screenCTX.globalAlpha = Math.min(logoAlpha,1);
+        screenCTX.drawImage(spritesheet,SS.logo.x,SS.logo.y,SS.logo.w,SS.logo.h,Math.round(screenW/2-LOGOW/2),Math.round(screenH/2-LOGOH/2),LOGOW,LOGOH);    
+        screenCTX.globalAlpha = 1;
+        logoAlpha -= LOGOFADESPD;
+    }
+    
     // scoreboard top left
     screenCTX.drawImage(spritesheet,SS.scoreboard.x,SS.scoreboard.y,SS.scoreboard.w,SS.scoreboard.h,0,0,SCOREW,SCOREH);
-    // buidbar bottom center
+
+    // buildbar bottom center
     screenCTX.drawImage(spritesheet,SS.buildbar.x,SS.buildbar.y,SS.buildbar.w,SS.buildbar.h,Math.round(screenW/2-BBARW/2),screenH-BBARH,BBARW,BBARH);
-    // folks questUI right
-    screenCTX.drawImage(spritesheet,SS.questUI.x,SS.questUI.y,SS.questUI.w,SS.questUI.h,screenW-QUESTW,0,QUESTW,QUESTH);
+
+    // folks questUIs! love it
+    for (i=0; i<numfolks; i++) {
+
+        screenCTX.drawImage(spritesheet, // npc quest bar
+            SS.questUI.x,SS.questUI.y,SS.questUI.w,SS.questUI.h,
+            screenW-QUESTW,i*QUESTH,QUESTW,QUESTH);  
+            // horizontally centered version of Y pos: 
+            // screenH2-Math.round(QUESTH*numfolks/2)+(i*QUESTH), 
+
+        spr = SS[folks[i].name]; // npc face icon
+        if (spr) { screenCTX.drawImage(spritesheet, 
+            spr.x, spr.y, spr.w, spr.h,
+            screenW-QUESTW+8, i*QUESTH+8, GUIFOLKW, GUIFOLKH);
+        }            
+            
+    }
 
 }
 
@@ -502,7 +515,7 @@ function renderWorld() { // slow
         //worldCTX.drawImage(spritesheet,things[i].x,things[i].y);
         
         // spritesheet draw
-        var spr = SS[things[i].name];
+        spr = SS[things[i].name];
         if (spr) { // sprite exists?
             worldCTX.drawImage(spritesheet,spr.x,spr.y,spr.w,spr.h,things[i].x,things[i].y,spr.w,spr.h);
         } else {

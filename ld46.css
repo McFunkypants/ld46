@@ -33,6 +33,7 @@ a:hover {
 }
 
 #menu {
+    display:none;
     top:50%;
     left:50%;
     width:512px;
@@ -89,3 +90,13 @@ a:hover {
     width:256px;
     margin:0;
 }
+
+#gold, #income, #xp, #date {
+    margin:0; padding:0; border:0; background:none;
+    size:16px; text-align:left;
+}
+
+#gold { top:10px; left:50px; }
+#income { top:10px; left:154px; }
+#xp { top:60px; left:50px; }
+#date { top:110px; left:50px; }
