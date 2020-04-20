@@ -25,9 +25,9 @@ Made with love by McFunkypants http://mcfunkypants.com
 
 "use strict";
 
-const DEBUGMODE = true;
+const DEBUGMODE = false;
 const DEBUGAI = true;
-const DEBUG_PROPS = 1000;
+const DEBUG_PROPS = 5000;
 const FOLKRADIUS = 32;
 const THINGRADIUS = 32;
 const CAMSPD = 4;
@@ -40,17 +40,27 @@ const AITURNSPD = 0.05;
 const WORLDW = 10000;
 const WORLDH = 10000;
 
-// spritesheet
-const SPRITESHEETW = 4096;
-const SSCOLS = 16;
-const SPRW = SPRITESHEETW / SSCOLS;
-const SPRH = SPRW;
-const ASPRW = 512; // on png
-const ASPRH = 512;
-const FOLKW = 64; // as drawn
-const FOLKH = 64; // as drawn
+// gui layout, on-screen small sizes
+const SCOREW = 256/2;
+const SCOREH = 192/2;
+const BBARW = 448/2;
+const BBARH = 160/2;
+const QUESTW = 288;
+const QUESTH = 112;
+const LOGOW = 448;
+const LOGOH = 448;
+const FOLKW = 64;
+const FOLKH = 64;
 const PINW = 64;
 const PINH = 96;
+
+// spritesheet large sizes
+const SMALLER = 0.25; // src=8192px dist=2048px
+const SPRW = 256*SMALLER;
+const SPRH = 256*SMALLER;
+const ASPRW = 512*SMALLER;
+const ASPRH = 512*SMALLER;
+
 var SS = {
     grass1:{x:0*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
     grass2:{x:1*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
@@ -88,13 +98,19 @@ var SS = {
     wateringcan:{x:14*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
     shovel:{x:15*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
 
-    avatar1:{x:0*ASPRW,y:1024,w:ASPRW,h:ASPRH},
-    avatar2:{x:1*ASPRW,y:1024,w:ASPRW,h:ASPRH},
-    avatar3:{x:2*ASPRW,y:1024,w:ASPRW,h:ASPRH},
-    avatar4:{x:3*ASPRW,y:1024,w:ASPRW,h:ASPRH},
-    avatar5:{x:4*ASPRW,y:1024,w:ASPRW,h:ASPRH},
+    avatar1:{x:0*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
+    avatar2:{x:1*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
+    avatar3:{x:2*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
+    avatar4:{x:3*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
+    avatar5:{x:4*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
 
-    pin:{x:0,y:1784,w:512,h:768},
+    pin:{x:0*SMALLER,y:1784*SMALLER,w:512*SMALLER,h:768*SMALLER},
+
+    logo:{x:2304*SMALLER,y:1792*SMALLER,w:1792*SMALLER,h:1792*SMALLER},
+    scoreboard:{x:768*SMALLER,y:1792*SMALLER,w:1024*SMALLER,h:768*SMALLER},
+    questUI:{x:0*SMALLER,y:2560*SMALLER,w:2304*SMALLER,h:896*SMALLER},
+    buildbar:{x:0*SMALLER,y:3456*SMALLER,w:1792*SMALLER,h:640*SMALLER},
+    buildbox:{x:1792*SMALLER,y:3456*SMALLER,w:512*SMALLER,h:640*SMALLER},
 };
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
@@ -148,7 +164,7 @@ function init() {
     music.src = "ld46.mp3";
 
     spritesheet = new Image();
-    spritesheet.src = 'ld46.png'; 
+    spritesheet.src = 'spritesheet_small.png';//'ld46.png'; 
     spritesheet.onload = start;
 
     window.addEventListener("mousedown", onmousedown);
@@ -278,7 +294,7 @@ function nearest(pool,x,y) {
 }
 
 function allEntitiesInRange(pool,x,y,range) {
-    var found = []; // FIXME GC every frame
+    var found = []; // warning: creates GC
     for (i=0; i<pool.length; i++) {
         if (dist(pool[i].x,pool[i].y,x,y) <= range) { 
             found.push(pool[i]);
@@ -326,7 +342,7 @@ function onmouseup(e) {
     if ((Math.abs(dragStartX-e.clientX)<DRAGTHRESHOLD) ||
         (Math.abs(dragStartY-e.clientY)<DRAGTHRESHOLD))
      {
-        addThing("flower", mouseX, mouseY);
+        addThing("flower1", mouseX, mouseY);
 
         renderWorld(); // redraw the giant world and all things[]
     }
@@ -381,9 +397,9 @@ function loadWorld() {
     //addThing("corner",0,0); // test
     //addFolk("corner",0,0); // test
     for (i=0; i<DEBUG_PROPS; i++) {
-        addThing("grass"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
-        addThing("plant"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
-        addThing("rock"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
+        addThing("grass"+(i%8+1),Math.random()*WORLDW,Math.random()*WORLDH);
+        addThing("plant"+(i%8+1),Math.random()*WORLDW,Math.random()*WORLDH);
+        addThing("rock"+(i%8+1),Math.random()*WORLDW,Math.random()*WORLDH);
 
     }
     renderWorld();
@@ -411,7 +427,7 @@ function step() {
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
     if (Math.random()<0.01) {
-        addFolk("avatar"+numfolks%5,mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
+        addFolk("avatar"+(numfolks%5+1),mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
     }
 
     for (i=0; i<numfolks; i++) {
@@ -460,6 +476,21 @@ function renderScreen() {
             " Cam:" + camX + "," + camY +
             " Mouse:" + mouseX + "," + mouseY;
     }
+
+    renderGUI();
+
+}
+
+function renderGUI() {
+
+    // logo middle
+    screenCTX.drawImage(spritesheet,SS.logo.x,SS.logo.y,SS.logo.w,SS.logo.h,Math.round(screenW/2-LOGOW/2),Math.round(screenH/2-LOGOH/2),LOGOW,LOGOH);    
+    // scoreboard top left
+    screenCTX.drawImage(spritesheet,SS.scoreboard.x,SS.scoreboard.y,SS.scoreboard.w,SS.scoreboard.h,0,0,SCOREW,SCOREH);
+    // buidbar bottom center
+    screenCTX.drawImage(spritesheet,SS.buildbar.x,SS.buildbar.y,SS.buildbar.w,SS.buildbar.h,Math.round(screenW/2-BBARW/2),screenH-BBARH,BBARW,BBARH);
+    // folks questUI right
+    screenCTX.drawImage(spritesheet,SS.questUI.x,SS.questUI.y,SS.questUI.w,SS.questUI.h,screenW-QUESTW,0,QUESTW,QUESTH);
 
 }
 
