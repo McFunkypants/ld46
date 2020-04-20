@@ -45,6 +45,12 @@ const SPRITESHEETW = 4096;
 const SSCOLS = 16;
 const SPRW = SPRITESHEETW / SSCOLS;
 const SPRH = SPRW;
+const ASPRW = 512; // on png
+const ASPRH = 512;
+const FOLKW = 64; // as drawn
+const FOLKH = 64; // as drawn
+const PINW = 64;
+const PINH = 96;
 var SS = {
     grass1:{x:0*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
     grass2:{x:1*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
@@ -73,6 +79,22 @@ var SS = {
     plant7:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
     plant8:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
 
+    bluebell:{x:8*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    sign:{x:9*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    pot:{x:10*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    shroom:{x:11*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    fungi:{x:12*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    flower1:{x:13*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    wateringcan:{x:14*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    shovel:{x:15*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+
+    avatar1:{x:0*ASPRW,y:1024,w:ASPRW,h:ASPRH},
+    avatar2:{x:1*ASPRW,y:1024,w:ASPRW,h:ASPRH},
+    avatar3:{x:2*ASPRW,y:1024,w:ASPRW,h:ASPRH},
+    avatar4:{x:3*ASPRW,y:1024,w:ASPRW,h:ASPRH},
+    avatar5:{x:4*ASPRW,y:1024,w:ASPRW,h:ASPRH},
+
+    pin:{x:0,y:1784,w:512,h:768},
 };
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
@@ -362,6 +384,7 @@ function loadWorld() {
         addThing("grass"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
         addThing("plant"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
         addThing("rock"+i%8,Math.random()*WORLDW,Math.random()*WORLDH);
+
     }
     renderWorld();
 }
@@ -388,7 +411,7 @@ function step() {
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
     if (Math.random()<0.01) {
-        addFolk("spawn"+numfolks,mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
+        addFolk("avatar"+numfolks%5,mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
     }
 
     for (i=0; i<numfolks; i++) {
@@ -406,11 +429,25 @@ function renderScreen() {
     screenCTX.drawImage(worldCanvas,camX-(screenW2*zoomSmooth),camY-(screenH2*zoomSmooth),screenW*zoomSmooth,screenH*zoomSmooth,0,0,screenW,screenH);
     
     // all dynamic objects
+    var spr, fx, fy;
     for (i=0; i<numfolks; i++) {
         //screenCTX.drawImage(spritesheet,folks[i].x-camX,folks[i].y-camY);
         
         // full size but in scaled position
-        screenCTX.drawImage(spritesheet,(folks[i].x-camX)/zoomSmooth+screenW2,(folks[i].y-camY)/zoomSmooth+screenH2);
+        //screenCTX.drawImage(spritesheet,(folks[i].x-camX)/zoomSmooth+screenW2,(folks[i].y-camY)/zoomSmooth+screenH2);
+
+        fx = (folks[i].x-camX)/zoomSmooth+screenW2;
+        fy = (folks[i].y-camY)/zoomSmooth+screenH2;
+        
+        screenCTX.drawImage(spritesheet,SS.pin.x,SS.pin.y,SS.pin.w,SS.pin.h,
+            fx,fy,PINW,PINH);
+
+        // SS style
+        spr = SS[folks[i].name];
+        if (spr) {
+            screenCTX.drawImage(spritesheet, spr.x, spr.y, spr.w, spr.h,
+                fx,fy,FOLKW,FOLKH);
+        }
     }
 
     // test
