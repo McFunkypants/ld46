@@ -513,11 +513,20 @@ function clickGUI(cx,cy) {
         if (buildPage>buildPageMax) buildPage = 0;
     }
 
+    // FIXME this is total garbage - all GUI should be HTML
     for (i=0; i<buildsPerPage; i++) {
-        if (cx >= screenW/2-BBARW/2-BBW*i && 
-            cx <= screenW/2-BBARW/2-BBW*(i-1) &&
+        if ((i<4 &&
+            (cx >= screenW/2-BBARW/2-BBS*i && 
+            cx <= screenW/2-BBARW/2-BBS*(i-1) &&
             cy >= screenH-BBARH &&
-            cy <= screenH) {
+            cy <= screenH))
+            ||
+            (i>3 &&
+                (cx >= screenW/2+BBARW/2+BBS*i && 
+                cx <= screenW/2+BBARW/2+BBS*(i-1) &&
+                cy >= screenH-BBARH &&
+                cy <= screenH))
+            ) {
             clicked = true;
             buildNum = i + buildPage*buildsPerPage - 1;
             buildName = spritenames[buildNum];
