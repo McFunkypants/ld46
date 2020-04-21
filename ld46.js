@@ -25,7 +25,7 @@ Made with love by McFunkypants http://mcfunkypants.com
 
 "use strict";
 
-const DEBUGMODE = false;
+const DEBUGMODE = true;
 const DEBUGAI = true;
 const DEBUG_PROPS = 5000;
 const FOLKRADIUS = 32;
@@ -56,6 +56,11 @@ const GUIFOLKW = 88;
 const GUIFOLKH = 88;
 const PINW = 64;
 const PINH = 96;
+const BBS = 64; // build box spacing
+const BBW = 64; // bb width
+const BBH = 80; // bb heiht
+const BIW = 32; // build icon width
+const BIH = 32; // bi heiht
 
 // spritesheet large sizes
 const SMALLER = 0.25; // src=8192px dist=2048px
@@ -116,6 +121,14 @@ var SS = {
     buildbox:{x:1792*SMALLER,y:3456*SMALLER,w:512*SMALLER,h:640*SMALLER},
 };
 
+var spritenames = Object.keys(SS);
+var buildPage = 3;
+var buildPageMax = 3;
+var buildNum = 8;
+var buildsPerPage = 8;
+var buildName = spritenames[buildNum];
+var buildPageDesc = ["grasses","rocks","plants","gardening"];
+
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
 var dragging, dragStartX, dragStartY, prevClientX, prevClientY, mouseDeltaX, mouseDeltaY;
 var worldCanvas, worldCTX; 
@@ -147,8 +160,7 @@ function init() {
     if (DEBUGMODE) {
         debugDiv = document.createElement("div");
         document.body.appendChild(debugDiv);
-        debugDiv.style.bottom = "0px";
-        debugDiv.style.right = "0px";
+        debugDiv.id = "debugDiv";
     }
 
     menuGUI = document.getElementById('menu');
@@ -247,7 +259,7 @@ function addThing(name,targetX,targetY) {
 }
 
 function addFolk(name,targetX,targetY) {
-    if (DEBUGMODE) console.log("addFolk " + name+","+targetX+","+targetY);
+    if (DEBUGMODE>1) console.log("addFolk " + name+","+targetX+","+targetY);
     var ent = { name:name, x:targetX, y:targetY, r:FOLKRADIUS, aimAngleRadians:0, ai:aiExplore };
     folks[numfolks] = ent;
     numfolks++;
@@ -330,7 +342,7 @@ function onmousemove(e) {
     
     hoveringFolk = collide(folks,mouseX,mouseY);
     if (hoveringFolk) {
-        if (DEBUGMODE) console.log("hovering "+hoveringFolk.name+" at "+hoveringFolk.x.toFixed(1)+","+hoveringFolk.y.toFixed(1));
+        if (DEBUGMODE>1) console.log("hovering "+hoveringFolk.name+" at "+hoveringFolk.x.toFixed(1)+","+hoveringFolk.y.toFixed(1));
     }
 
 }
@@ -346,14 +358,16 @@ function onmouseup(e) {
     if ((Math.abs(dragStartX-e.clientX)<DRAGTHRESHOLD) ||
         (Math.abs(dragStartY-e.clientY)<DRAGTHRESHOLD))
      {
-        addThing("flower1", mouseX, mouseY);
+        addThing(buildName, mouseX, mouseY);
 
         renderWorld(); // redraw the giant world and all things[]
     }
 }
 
 function onmousedown(e) {
-    if (DEBUGMODE) console.log("onmousedown " + e.clientX+","+e.clientY);
+    if (DEBUGMODE>1) console.log("onmousedown " + e.clientX+","+e.clientY);
+    
+    if (clickGUI(e.clientX,e.clientY)) return;
     
     updateMousePos(e);
     
@@ -465,12 +479,57 @@ function renderScreen() {
         debugDiv.innerHTML = 
             "Frame:" + frame +
             " Cam:" + camX + "," + camY +
-            " Mouse:" + mouseX + "," + mouseY;
+            " Mouse:" + mouseX + "," + mouseY +
+            " Build:" + buildNum + "=" + buildName;
     }
 
     renderGUI();
 
 }
+
+function clickGUI(cx,cy) {
+    
+    if (DEBUGMODE) console.log("clickGUI "+cx+","+cy);
+    
+    var clicked = false;
+    var bb;
+    
+    // build bar clicks
+    // note to self: gui in canvas is stupid
+
+    bb = [screenW/2-BBARW/2,screenW/2-BBARW/2+BBW,screenH-BBARH,screenH];
+    if ((cx >= bb[0]) && (cx <= bb[1]) && (cy >= bb[2]) && (cy <= bb[3])) {
+        if (DEBUGMODE) console.log("CLICKED PREV");
+        clicked = true;
+        buildPage--;
+        if (buildPage<0) buildPage = buildPageMax;
+    }
+
+    bb = [screenW/2+BBARW/2-BBW,screenW/2-BBARW/2,screenH-BBARH,screenH];
+    if ((cx >= bb[0]) && (cx <= bb[1]) && (cy >= bb[2]) && (cy <= bb[3])) {
+        if (DEBUGMODE) console.log("CLICKED NEXT");
+        clicked = true;
+        buildPage++;
+        if (buildPage>buildPageMax) buildPage = 0;
+    }
+
+    for (i=0; i<buildsPerPage; i++) {
+        if (cx >= screenW/2-BBARW/2-BBW*i && 
+            cx <= screenW/2-BBARW/2-BBW*(i-1) &&
+            cy >= screenH-BBARH &&
+            cy <= screenH) {
+            clicked = true;
+            buildNum = i + buildPage*buildsPerPage - 1;
+            buildName = spritenames[buildNum];
+            if (DEBUGMODE) console.log("CLICKED #"+i+"="+buildName);
+        }
+    }
+
+
+    return clicked;
+
+}
+
 
 function renderGUI() {
 
@@ -485,8 +544,31 @@ function renderGUI() {
     // scoreboard top left
     screenCTX.drawImage(spritesheet,SS.scoreboard.x,SS.scoreboard.y,SS.scoreboard.w,SS.scoreboard.h,0,0,SCOREW,SCOREH);
 
+    // buildbar left side
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 - BBARW/2 - BBS*4),screenH-BBARH,BBW,BBH);
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 - BBARW/2 - BBS*3),screenH-BBARH,BBW,BBH);
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 - BBARW/2 - BBS*2),screenH-BBARH,BBW,BBH);
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 - BBARW/2 - BBS*1),screenH-BBARH,BBW,BBH);
     // buildbar bottom center
     screenCTX.drawImage(spritesheet,SS.buildbar.x,SS.buildbar.y,SS.buildbar.w,SS.buildbar.h,Math.round(screenW/2-BBARW/2),screenH-BBARH,BBARW,BBARH);
+    // buildbar right side
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 + BBARW/2 + BBS*3),screenH-BBARH,BBW,BBH);
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 + BBARW/2 + BBS*2),screenH-BBARH,BBW,BBH);
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 + BBARW/2 + BBS*1),screenH-BBARH,BBW,BBH);
+    screenCTX.drawImage(spritesheet,SS.buildbox.x,SS.buildbox.y,SS.buildbox.w,SS.buildbox.h,Math.round(screenW/2 + BBARW/2 + BBS*0),screenH-BBARH,BBW,BBH);
+    // buildables
+    for (i=0; i<buildsPerPage; i++) {
+        spritenames = Object.keys(SS);
+        spr = SS[spritenames[i+buildPage*buildsPerPage]];
+        if (i<buildsPerPage/2) { // left side
+            screenCTX.drawImage(spritesheet,spr.x,spr.y,spr.w,spr.h,
+            Math.round(screenW/2 - BBARW/2 - BBS*(i+1))+16,screenH-BBARH+24,BIW,BIH);
+        } else {
+            screenCTX.drawImage(spritesheet,spr.x,spr.y,spr.w,spr.h,
+            Math.round(screenW/2 + BBARW/2 + BBS*(i-buildsPerPage/2))+16,screenH-BBARH+24,BIW,BIH);
+        }
+    }
+
 
     // folks questUIs! love it
     for (i=0; i<numfolks; i++) {
