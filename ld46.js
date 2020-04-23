@@ -89,13 +89,13 @@ var SS = {
     rock8:{x:15*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
 
     plant1:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant2:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant3:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant4:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant5:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant6:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant7:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
-    plant8:{x:0*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant2:{x:1*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant3:{x:2*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant4:{x:3*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant5:{x:4*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant6:{x:5*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant7:{x:6*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+    plant8:{x:7*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
 
     bluebell:{x:8*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
     sign:{x:9*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
@@ -105,6 +105,15 @@ var SS = {
     flower1:{x:13*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
     wateringcan:{x:14*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
     shovel:{x:15*SPRW,y:1*SPRH,w:SPRW,h:SPRH},
+
+    path:{x:2048*SMALLER,y:512*SMALLER,w:512*SMALLER,h:256*SMALLER},
+    sidewalk:{x:2560*SMALLER,y:512*SMALLER,w:512*SMALLER,h:256*SMALLER},
+    gravel:{x:3072*SMALLER,y:512*SMALLER,w:512*SMALLER,h:256*SMALLER},
+    bikerack:{x:3328*SMALLER,y:3584*SMALLER,w:768*SMALLER,h:512*SMALLER},
+    bike:{x:4864*SMALLER,y:1024*SMALLER,w:768*SMALLER,h:768*SMALLER},
+    climber:{x:4096*SMALLER,y:1024*SMALLER,w:768*SMALLER,h:768*SMALLER},
+    swingset:{x:5888*SMALLER,y:0*SMALLER,w:768*SMALLER,h:768*SMALLER},
+    wishingwell:{x:5632*SMALLER,y:1024*SMALLER,w:512*SMALLER,h:768*SMALLER},
 
     avatar1:{x:0*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
     avatar2:{x:1*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
@@ -123,10 +132,11 @@ var SS = {
 
 var spritenames = Object.keys(SS);
 var buildPage = 3;
-var buildPageMax = 3;
+var buildPageMax = 4;
 var buildNum = 8;
 var buildsPerPage = 8;
 var buildName = spritenames[buildNum];
+var pendingBuild, buildSprite;
 var buildPageDesc = ["grasses","rocks","plants","gardening"];
 
 var screenCanvas, screenCTX, screenW, screenW2, screenH, screenH2, spritesheet;
@@ -358,16 +368,24 @@ function onmouseup(e) {
     if ((Math.abs(dragStartX-e.clientX)<DRAGTHRESHOLD) ||
         (Math.abs(dragStartY-e.clientY)<DRAGTHRESHOLD))
      {
-        addThing(buildName, mouseX, mouseY);
-
-        renderWorld(); // redraw the giant world and all things[]
+        
+        if (pendingBuild) {
+            x = mouseX-(buildSprite.w/zoomSmooth/2);
+            y = mouseY-(buildSprite.h/zoomSmooth);
+            addThing(buildName,x,y);
+            //pendingBuild = false; // keep going! =)
+            // we do not need to do this anymore!
+            //renderWorld(); // redraw the giant world and all things[]
+            drawOnWorld(buildSprite,x,y); // stamp the terrain bitmap
+        }
+    
     }
 }
 
 function onmousedown(e) {
     if (DEBUGMODE>1) console.log("onmousedown " + e.clientX+","+e.clientY);
     
-    if (clickGUI(e.clientX,e.clientY)) return;
+    if (clickGUI(e.clientX,e.clientY)) return; // done by html now
     
     updateMousePos(e);
     
@@ -384,14 +402,18 @@ function onmousedown(e) {
 }
 
 function onwheel(e) {
-    if (e.deltaY>0) {
-        zoom++;
-        if (zoom>MAXZOOM) zoom = MAXZOOM;
-    } else {
-        zoom--;
-        if (zoom<MINZOOM) zoom = MINZOOM;
-    }
-    if (DEBUGMODE) console.log("wheel ("+e.deltaY+") zoom="+zoom);
+    if (e.deltaY>0) zoomIn(); else zoomOut();
+    if (DEBUGMODE) console.log("onwheel "+e.deltaY);
+}
+function zoomIn() {
+    zoom++;
+    if (zoom>MAXZOOM) zoom = MAXZOOM;
+    if (DEBUGMODE) console.log("zoom in: "+zoom);
+}
+function zoomOut() {
+    zoom--;
+    if (zoom<MINZOOM) zoom = MINZOOM;
+    if (DEBUGMODE) console.log("zoom out: "+zoom);
 }
 
 function onkeydown(e) {
@@ -420,7 +442,7 @@ function loadWorld() {
         addThing("rock"+(i%8+1),Math.random()*WORLDW,Math.random()*WORLDH);
 
     }
-    renderWorld();
+    renderWorld(); // the entire thing, can take > 1 second if 250k entities!
 }
 
 function step() {
@@ -485,9 +507,18 @@ function renderScreen() {
 
     renderGUI();
 
+    // pending buildable
+    if (pendingBuild && buildSprite) {
+        x = (mouseX-camX)/zoomSmooth+screenW2-(buildSprite.w/zoomSmooth/2);
+        y = (mouseY-camY)/zoomSmooth+screenH2-(buildSprite.h/zoomSmooth);
+        screenCTX.drawImage(spritesheet, 
+            buildSprite.x, buildSprite.y, buildSprite.w, buildSprite.h,
+            x, y, buildSprite.w/zoomSmooth, buildSprite.h/zoomSmooth);
+    }
+
 }
 
-function clickGUI(cx,cy) {
+function clickGUI(cx,cy) { // FIXME switch to html
     
     if (DEBUGMODE) console.log("clickGUI "+cx+","+cy);
     
@@ -499,38 +530,30 @@ function clickGUI(cx,cy) {
 
     bb = [screenW/2-BBARW/2,screenW/2-BBARW/2+BBW,screenH-BBARH,screenH];
     if ((cx >= bb[0]) && (cx <= bb[1]) && (cy >= bb[2]) && (cy <= bb[3])) {
-        if (DEBUGMODE) console.log("CLICKED PREV");
-        clicked = true;
-        buildPage--;
-        if (buildPage<0) buildPage = buildPageMax;
+        guiPrev();
     }
 
     bb = [screenW/2+BBARW/2-BBW,screenW/2-BBARW/2,screenH-BBARH,screenH];
     if ((cx >= bb[0]) && (cx <= bb[1]) && (cy >= bb[2]) && (cy <= bb[3])) {
-        if (DEBUGMODE) console.log("CLICKED NEXT");
-        clicked = true;
-        buildPage++;
-        if (buildPage>buildPageMax) buildPage = 0;
+        guiNext();
     }
 
     // FIXME this is total garbage - all GUI should be HTML
     for (i=0; i<buildsPerPage; i++) {
-        if ((i<4 &&
+        if ((i<4 && // 0,1,2,3
             (cx >= screenW/2-BBARW/2-BBS*i && 
             cx <= screenW/2-BBARW/2-BBS*(i-1) &&
             cy >= screenH-BBARH &&
             cy <= screenH))
-            ||
-            (i>3 &&
-                (cx >= screenW/2+BBARW/2+BBS*i && 
-                cx <= screenW/2+BBARW/2+BBS*(i-1) &&
+            || // spacer in between
+            (i>3 && // 4,5,6,7
+                (cx >= screenW/2+BBARW/2+BBS*(i-4) && 
+                cx <= screenW/2+BBARW/2+BBS*(i-3) &&
                 cy >= screenH-BBARH &&
                 cy <= screenH))
             ) {
             clicked = true;
-            buildNum = i + buildPage*buildsPerPage - 1;
-            buildName = spritenames[buildNum];
-            if (DEBUGMODE) console.log("CLICKED #"+i+"="+buildName);
+            guiBuild(i);
         }
     }
 
@@ -539,8 +562,25 @@ function clickGUI(cx,cy) {
 
 }
 
+function guiBuild(num) {
+    buildNum = num + buildPage*buildsPerPage - 1;
+    buildName = spritenames[buildNum];
+    buildSprite = SS[buildName];
+    pendingBuild = true;
+    if (DEBUGMODE) console.log("[BUILD] "+num+": "+buildName);
+}
+function guiNext() {
+    if (DEBUGMODE) console.log("[NEXT]");
+    buildPage++;
+    if (buildPage>buildPageMax) buildPage = 0;
+}
+function guiPrev() {
+    if (DEBUGMODE) console.log("[PREV]");
+    buildPage--;
+    if (buildPage<0) buildPage = buildPageMax;
+}
 
-function renderGUI() {
+function renderGUI() { // FIXME remove and use html
 
     // logo middle
     if (logoAlpha>0) {
@@ -596,6 +636,11 @@ function renderGUI() {
             
     }
 
+}
+
+function drawOnWorld(spr,wx,wy) { // fast
+    if (DEBUGMODE) console.log("drawOnWorld");
+    worldCTX.drawImage(spritesheet,spr.x,spr.y,spr.w,spr.h,wx,wy,spr.w,spr.h);    
 }
 
 function renderWorld() { // slow
