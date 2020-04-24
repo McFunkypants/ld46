@@ -27,7 +27,8 @@ Made with love by McFunkypants http://mcfunkypants.com
 
 const DEBUGMODE = true;
 const DEBUGAI = true;
-const DEBUG_PROPS = 5000;
+const STRESS_TEST = false; // if true, spawn many folks
+const DEBUG_PROPS = 2500;
 const FOLKRADIUS = 32;
 const THINGRADIUS = 32;
 const CAMSPD = 4;
@@ -115,6 +116,19 @@ var SS = {
     swingset:{x:5888*SMALLER,y:0*SMALLER,w:768*SMALLER,h:768*SMALLER},
     wishingwell:{x:5632*SMALLER,y:1024*SMALLER,w:512*SMALLER,h:768*SMALLER},
 
+    shrub:{x:4096*SMALLER,y:0*SMALLER,w:512*SMALLER,h:512*SMALLER},
+    bush:{x:4608*SMALLER,y:0*SMALLER,w:512*SMALLER,h:512*SMALLER},
+    scrub:{x:5120*SMALLER,y:0*SMALLER,w:512*SMALLER,h:512*SMALLER},
+    foliage:{x:6656*SMALLER,y:2048*SMALLER,w:768*SMALLER,h:768*SMALLER},
+    teetertotter:{x:7680*SMALLER,y:2048*SMALLER,w:512*SMALLER,h:256*SMALLER},
+    woodbeam:{x:7424*SMALLER,y:2304*SMALLER,w:768*SMALLER,h:512*SMALLER},
+    stump:{x:7424*SMALLER,y:2816*SMALLER,w:768*SMALLER,h:512*SMALLER},
+    hedge:{x:7424*SMALLER,y:1280*SMALLER,w:768*SMALLER,h:768*SMALLER},
+    
+
+
+
+    // non buildables -----v
     avatar1:{x:0*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
     avatar2:{x:1*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
     avatar3:{x:2*ASPRW,y:1024*SMALLER,w:ASPRW,h:ASPRH},
@@ -131,8 +145,9 @@ var SS = {
 };
 
 var spritenames = Object.keys(SS);
+var buildGrid = 1; // works, but sprites themselves aren't on the grid
 var buildPage = 3;
-var buildPageMax = 4;
+var buildPageMax = 5;
 var buildNum = 8;
 var buildsPerPage = 8;
 var buildName = spritenames[buildNum];
@@ -372,6 +387,12 @@ function onmouseup(e) {
         if (pendingBuild) {
             x = mouseX-(buildSprite.w/zoomSmooth/2);
             y = mouseY-(buildSprite.h/zoomSmooth);
+
+            if (buildGrid) { // grid snap
+                x = Math.round(x / buildGrid) * buildGrid;
+                y = Math.round(y / buildGrid) * buildGrid;
+            }
+
             addThing(buildName,x,y);
             //pendingBuild = false; // keep going! =)
             // we do not need to do this anymore!
@@ -466,7 +487,7 @@ function step() {
     // close enough to snap
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
-    if (Math.random()<0.01) {
+    if (STRESS_TEST && Math.random()<0.01) {
         addFolk("avatar"+(numfolks%5+1),mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
     }
 
@@ -511,6 +532,12 @@ function renderScreen() {
     if (pendingBuild && buildSprite) {
         x = (mouseX-camX)/zoomSmooth+screenW2-(buildSprite.w/zoomSmooth/2);
         y = (mouseY-camY)/zoomSmooth+screenH2-(buildSprite.h/zoomSmooth);
+
+        if (buildGrid) { // grid snap
+            x = Math.round(x / buildGrid) * buildGrid;
+            y = Math.round(y / buildGrid) * buildGrid;
+        }
+
         screenCTX.drawImage(spritesheet, 
             buildSprite.x, buildSprite.y, buildSprite.w, buildSprite.h,
             x, y, buildSprite.w/zoomSmooth, buildSprite.h/zoomSmooth);
@@ -528,34 +555,37 @@ function clickGUI(cx,cy) { // FIXME switch to html
     // build bar clicks
     // note to self: gui in canvas is stupid
 
-    bb = [screenW/2-BBARW/2,screenW/2-BBARW/2+BBW,screenH-BBARH,screenH];
+    bb = [screenW/2-BBARW/2,screenW/2-BBARW/2+BBW,screenH-BBARH,screenH]; // GC warning
     if ((cx >= bb[0]) && (cx <= bb[1]) && (cy >= bb[2]) && (cy <= bb[3])) {
+        clicked = true;
         guiPrev();
     }
 
-    bb = [screenW/2+BBARW/2-BBW,screenW/2-BBARW/2,screenH-BBARH,screenH];
+    bb = [screenW/2+BBARW/2-BBW,screenW/2+BBARW/2,screenH-BBARH,screenH];
     if ((cx >= bb[0]) && (cx <= bb[1]) && (cy >= bb[2]) && (cy <= bb[3])) {
+        clicked = true;
         guiNext();
     }
 
-    // FIXME this is total garbage - all GUI should be HTML
     for (i=0; i<buildsPerPage; i++) {
-        if ((i<4 && // 0,1,2,3
-            (cx >= screenW/2-BBARW/2-BBS*i && 
-            cx <= screenW/2-BBARW/2-BBS*(i-1) &&
-            cy >= screenH-BBARH &&
-            cy <= screenH))
-            || // spacer in between
-            (i>3 && // 4,5,6,7
-                (cx >= screenW/2+BBARW/2+BBS*(i-4) && 
-                cx <= screenW/2+BBARW/2+BBS*(i-3) &&
-                cy >= screenH-BBARH &&
-                cy <= screenH))
-            ) {
-            clicked = true;
-            guiBuild(i);
-        }
-    }
+        if (cy >= screenH-BBARH) { // near bottom?
+            if (i<buildsPerPage/2) { // left side
+                if (cx >= Math.round(screenW/2 - BBARW/2 - BBS*(i+1)) &&
+                    cx <= Math.round(screenW/2 - BBARW/2 - BBS*(i+1) + BBS)) 
+                {
+                    clicked = true;
+                    guiBuild(i+1);
+                }
+            } else { // right side
+                if (cx >= screenW/2 + BBARW/2 + BBS*(i-buildsPerPage/2) &&
+                    cx <= screenW/2 + BBARW/2 + BBS*(i-buildsPerPage/2) + BBS) 
+                {
+                    clicked = true;
+                    guiBuild(i+1);
+                }
+            }
+        } // bbar click
+    } // loop
 
 
     return clicked;
