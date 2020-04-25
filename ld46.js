@@ -41,6 +41,7 @@ const AITURNSPD = 0.05;
 const WORLDW = 10000;
 const WORLDH = 10000;
 const LOGOFADESPD = 0.01;
+const currentMapName = "savegame";
 
 // gui layout, on-screen small sizes
 const SCOREW = 256;//256/2;
@@ -276,7 +277,8 @@ function resize() {
 }
 
 function addThing(name,targetX,targetY) {
-    //if (DEBUGMODE) console.log("addThing " + name+","+x+","+y);
+    if (!name || targetX==undefined || isNaN(targetX)) return;
+    if (DEBUGMODE>1) console.log("addThing " + name+","+targetX+","+targetY);
     var ent = { name:name, x:targetX, y:targetY, r:THINGRADIUS };
     things[numthings] = ent;
     numthings++;
@@ -398,6 +400,9 @@ function onmouseup(e) {
             // we do not need to do this anymore!
             //renderWorld(); // redraw the giant world and all things[]
             drawOnWorld(buildSprite,x,y); // stamp the terrain bitmap
+            mapdata += buildName+","+x+","+y+",";
+            if (DEBUGMODE) console.log("mapdata="+mapdata);
+            saveMap(currentMapName); // spammy
         }
     
     }
@@ -464,6 +469,8 @@ function loadWorld() {
 
     }
     renderWorld(); // the entire thing, can take > 1 second if 250k entities!
+
+    loadMap(currentMapName);
 }
 
 function step() {
@@ -545,7 +552,7 @@ function renderScreen() {
 
 }
 
-function clickGUI(cx,cy) { // FIXME switch to html
+function clickGUI(cx,cy) {
     
     if (DEBUGMODE) console.log("clickGUI "+cx+","+cy);
     
@@ -610,7 +617,7 @@ function guiPrev() {
     if (buildPage<0) buildPage = buildPageMax;
 }
 
-function renderGUI() { // FIXME remove and use html
+function renderGUI() { 
 
     // logo middle
     if (logoAlpha>0) {
@@ -689,6 +696,55 @@ function renderWorld() { // slow
         }
 
     }
+}
+var mapdata = "";
+const mapPrefix = "FOLX_MAP_";
+function loadMap(name) {
+    if (DEBUGMODE) console.log("loadMap: "+name);
+    if (!window.localStorage) return;
+    mapdata = localStorage.getItem(mapPrefix+'name');
+    if (!mapdata) {
+        if (DEBUGMODE) console.log("No save data found. Starting new game!");
+        mapdata = "";
+    } else {
+        parseMap(mapdata);
+    }
+}
+function saveMap(name) {
+    if (DEBUGMODE) console.log("saveMap: "+name);
+    if (!window.localStorage) return;
+    localStorage.setItem(mapPrefix+'name',mapdata);
+}
+function downloadMap(name) {
+    if (DEBUGMODE) console.log("downloadMap: "+name);
+    downloadString(mapdata,"text/javascript",name+".js");   
+}
+function parseMap(data) {
+    if (DEBUGMODE) console.log("parsing a "+data.length+" byte map");
+    data = data.split(",");
+    num = data.length;
+    for (i=0; i<num; i+=3) {
+        addThing(data[i],parseInt(data[i+1]),parseInt(data[i+2]));
+    }
+    renderWorld(); // redraw the giant world and all things[]
+}
+
+function downloadString(text, fileType, fileName) {
+    // text is the data with \n for newlines etc
+    // fileType is a MIME type string (eg "text/html" or "text/plain")
+    // fileName is the suggested download filename
+    // example:
+    // downloadString("var cool = true;\nvar string = 'careful about quotes';", "text/javascript", "myFilename.js")
+    var blob = new Blob([text], { type: fileType });     // encode the data
+    var a = document.createElement('a');
+    a.download = fileName;
+    a.href = URL.createObjectURL(blob);
+    a.dataset.downloadurl = [fileType, a.download, a.href].join(':');
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 1500);
 }
 
 function animate() {
