@@ -107,3 +107,19 @@ a:hover {
 #income { top:10px; left:154px; }
 #xp { top:60px; left:50px; }
 #date { top:110px; left:50px; }
+
+#folkGUI { top:0px; right:0px; 
+    width:576px;
+    height:224px;
+    background:url('ld46.png'); 
+    background-position:0px -640px;
+}
+
+<div id='folkgui'>
+<div class='folk' id='folk1'>
+    <div class='pic' id='pic1'></div>
+    <div class='name' id='name1'>Coolio McSmooth</div>
+    <div class='stats' id='stats1'>! ! !</div>
+    <div class='bar'><div class='happiness' id='happy1' style='width:50%'></div></div>
+</div>
+</div>

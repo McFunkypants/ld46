@@ -27,7 +27,8 @@ Made with love by McFunkypants http://mcfunkypants.com
 
 const DEBUGMODE = true;
 const DEBUGAI = true;
-const STRESS_TEST = false; // if true, spawn many folks
+const STRESS_TEST = true; // if true, keep spawning new folks
+const MAXFOLKS = 5;
 const DEBUG_PROPS = 2500;
 const FOLKRADIUS = 32;
 const THINGRADIUS = 32;
@@ -41,7 +42,11 @@ const AITURNSPD = 0.05;
 const WORLDW = 10000;
 const WORLDH = 10000;
 const LOGOFADESPD = 0.01;
-const currentMapName = "savegame";
+const LOOKRANGE = 200; // range folx detect things they like
+const LOVESTRENGTH = 1; // how much hp we get from seeing something we like
+const MAXHP = 100;
+
+var currentMapName = "savegame";
 
 // gui layout, on-screen small sizes
 const SCOREW = 256;//256/2;
@@ -70,6 +75,14 @@ const SPRW = 256*SMALLER;
 const SPRH = 256*SMALLER;
 const ASPRW = 512*SMALLER;
 const ASPRH = 512*SMALLER;
+
+const folxNames = [
+    "Jacy Axelrod",
+    "Chai Kovski",
+    "Dewie Decimal",
+    "Coolio McSmooth",
+    "Hammer Davidson"
+]
 
 var SS = {
     grass1:{x:0*SPRW,y:0*SPRH,w:SPRW,h:SPRH},
@@ -163,7 +176,7 @@ var music, sfx, mute, volume;
 var frame, camX, camY, zoom, zoomSmooth;
 var userHasInteracted, up, right, down, left, mouseX, mouseY;
 var things, numthings, folks, numfolks, hoveringFolk;
-var x, y, i, spr, num, debugDiv, ent;
+var x, y, i, spr, num, debugDiv, ent, all, str;
 
 window.addEventListener("load", init);
 
@@ -232,6 +245,26 @@ function randomAngleRadians() {
     return Math.random()*Math.PI*2;
 }
 
+function lookAround(who,atwhat=things,range=LOOKRANGE) {
+    str = "";
+    all = allEntitiesInRange(atwhat,who.x,who.y,range);
+    for(i=0; i<all.length; i++) {
+        if (str.length) str += " ";
+        // FIXME: switch to bit flags or an array of ids
+        // this checks first three chars of loves and sprite name
+        // to match "plants" with "plant74" etc
+        if (who.loves[0]==all[i].name[0] &&
+            who.loves[1]==all[i].name[1] &&
+            who.loves[2]==all[i].name[2]) {
+            str += "*";
+            who.hp += LOVESTRENGTH;
+            if (who.hp>MAXHP) who.hp=MAXHP;
+        }
+        str += all[i].name; // debug only spam
+    }
+    if (DEBUGMODE) console.log(who.name+"(hp:"+who.hp+") can see "+all.length+" of "+atwhat.length+" entities:\n"+str);
+}
+
 // move randomly using car-like turns!
 function aiExplore() {
     // choose a random direction to travel from time to time
@@ -243,10 +276,12 @@ function aiExplore() {
         //if (DEBUGAI) console.log("aiExplore: time to change directions!");
         this.ExploreAngle = randomAngleRadians();
         this.ExploreTimer = rndInt(60,240);
+
+        lookAround(this);
+
     }
 
-    
-    // rotate in the shortet direction
+    // rotate in the shortest direction
     if(this.aimAngleRadians < this.ExploreAngle) {
         if(Math.abs(this.aimAngleRadians - this.ExploreAngle)<180)
         this.aimAngleRadians += AITURNSPD;
@@ -261,11 +296,10 @@ function aiExplore() {
     if (this.aimAngleRadians>Math.PI*2) this.aimAngleRadians -= Math.PI*2;
     if (this.aimAngleRadians<0) this.aimAngleRadians += Math.PI*2;
 
-
-
     // move in the direction we are facing
     this.x += AISPD * Math.cos(this.aimAngleRadians);
     this.y += AISPD * Math.sin(this.aimAngleRadians);
+    
 }
 
 function resize() {
@@ -279,7 +313,12 @@ function resize() {
 function addThing(name,targetX,targetY) {
     if (!name || targetX==undefined || isNaN(targetX)) return;
     if (DEBUGMODE>1) console.log("addThing " + name+","+targetX+","+targetY);
-    var ent = { name:name, x:targetX, y:targetY, r:THINGRADIUS };
+    var ent = { 
+        name:name, 
+        id:numthings,
+        x:targetX, 
+        y:targetY, 
+        r:THINGRADIUS };
     things[numthings] = ent;
     numthings++;
     return ent;
@@ -287,7 +326,19 @@ function addThing(name,targetX,targetY) {
 
 function addFolk(name,targetX,targetY) {
     if (DEBUGMODE>1) console.log("addFolk " + name+","+targetX+","+targetY);
-    var ent = { name:name, x:targetX, y:targetY, r:FOLKRADIUS, aimAngleRadians:0, ai:aiExplore };
+    var ent = { 
+        name:name, 
+        id:numfolks,
+        x:targetX, 
+        y:targetY, 
+        r:FOLKRADIUS, 
+        aimAngleRadians:0, 
+        ai:aiExplore, 
+        hp:0, 
+        age:0,
+        loves:"rocks",
+        hates:"cars"
+    };
     folks[numfolks] = ent;
     numfolks++;
     return ent;
@@ -495,7 +546,9 @@ function step() {
     if (Math.abs(zoom-zoomSmooth)<ZOOMSPD) zoomSmooth = zoom;
 
     if (STRESS_TEST && Math.random()<0.01) {
-        addFolk("avatar"+(numfolks%5+1),mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
+        if (numfolks<MAXFOLKS) {
+            ent = addFolk("avatar"+(numfolks%5+1),mouseX+Math.random()*400-200,mouseY+Math.random()*400-200);
+        }
     }
 
     for (i=0; i<numfolks; i++) {
